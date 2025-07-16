@@ -1,0 +1,39 @@
+services:
+  api01: &api
+    image: hashicorp/http-echo
+    command: ["-text=Hello from API01", "-listen=:3000"]
+    networks:
+      - rinha-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.675"
+          memory: "160MB"
+
+  api02:
+    <<: *api
+    command: ["-text=Hello from API02", "-listen=:3000"]
+
+  nginx:
+    image: nginx:alpine-slim
+    container_name: load-balancer
+    ports:
+      - "9999:9999"
+    networks:
+      - rinha-net
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api01
+      - api02
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: "15MB"
+
+networks:
+  payment-processor:
+    external: true
+  rinha-net:
+    driver: bridge
