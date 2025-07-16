@@ -1,7 +1,11 @@
 services:
   api01: &api
-    image: hashicorp/http-echo
-    command: ["-text=Hello from API01", "-listen=:3000"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api01
+    environment:
+      - INSTANCE_NAME=api01
     networks:
       - rinha-net
     deploy:
@@ -12,7 +16,9 @@ services:
 
   api02:
     <<: *api
-    command: ["-text=Hello from API02", "-listen=:3000"]
+    container_name: api02
+    environment:
+      - INSTANCE_NAME=api02
 
   nginx:
     image: nginx:alpine-slim
