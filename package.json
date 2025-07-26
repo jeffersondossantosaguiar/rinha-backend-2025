@@ -21,10 +21,12 @@
   "homepage": "https://github.com/jeffersondossantosaguiar/rinha-backend-2025#readme",
   "dependencies": {
     "fastify": "^5.4.0",
+    "opossum": "^9.0.0",
     "undici": "^7.12.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.14",
+    "@types/opossum": "^8.1.9",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }

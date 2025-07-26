@@ -1,15 +1,9 @@
 import { FastifyInstance } from "fastify"
-import { request } from "undici"
-import { dispatcher } from "./http-client.js"
-
-// TODO: Testar early return
-
-const PAYMENT_PROCESSOR_DEFAULT_URL =
-  process.env.PAYMENT_PROCESSOR_DEFAULT_URL || "http://localhost:8001"
+import { PaymentPayload, paymentProcessorHandler } from "./service.js"
 
 export default async function routes(app: FastifyInstance) {
   app.post("/payments", async (req, reply) => {
-    const { correlationId, amount } = req.body as any
+    const { correlationId, amount } = req.body as PaymentPayload
 
     const payload = {
       correlationId,
@@ -17,26 +11,23 @@ export default async function routes(app: FastifyInstance) {
       requestedAt: new Date().toISOString()
     }
 
-    const { body, statusCode } = await request(
-      `${PAYMENT_PROCESSOR_DEFAULT_URL}/payments`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-        dispatcher
-      }
-    )
+    await paymentProcessorHandler(payload)
 
     return reply.code(201).send()
   })
 
   app.get("/payments-summary", async (request, reply) => {
+    const { from, to } = request.query as { from?: string; to?: string }
+
     return {
-      total: 100,
-      successful: 98,
-      failed: 2,
-      from: "2025-07-16T00:00:00.000Z",
-      to: "2025-07-16T23:59:59.999Z"
+      default: {
+        totalRequests: 43236,
+        totalAmount: 415542345.98
+      },
+      fallback: {
+        totalRequests: 423545,
+        totalAmount: 329347.34
+      }
     }
   })
 
