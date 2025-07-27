@@ -1,7 +1,13 @@
+import fastifyRedis from "@fastify/redis"
 import fastify from "fastify"
 import routes from "./routes.js"
 
 const app = fastify()
+
+app.register(fastifyRedis, {
+  host: process.env.REDIS_HOST || "localhost",
+  port: Number(process.env.REDIS_PORT || 6379)
+})
 
 app.register(routes)
 
