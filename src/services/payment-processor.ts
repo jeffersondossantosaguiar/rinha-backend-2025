@@ -1,8 +1,8 @@
 import { FastifyRedis } from "@fastify/redis"
-import { FastifyInstance } from "fastify"
 import CircuitBreaker from "opossum"
 import { request } from "undici"
-import { dispatcher } from "./http-client.js"
+import { dispatcher } from "../http-client.js"
+import { CircuitBreakerPayload, PaymentPayload } from "../types.js"
 
 const PAYMENT_PROCESSOR_DEFAULT_URL =
   process.env.PAYMENT_PROCESSOR_DEFAULT_URL || "http://localhost:8001"
@@ -13,16 +13,6 @@ const cbOptions = {
   timeout: 1000, // 1 seconds
   errorThresholdPercentage: 50, // 50% failure rate
   resetTimeout: 5000 // 5 seconds
-}
-
-type PaymentPayload = {
-  correlationId: string
-  amount: number
-}
-
-type CircuitBreakerPayload = {
-  payload: PaymentPayload & { requestedAt: string }
-  redis: FastifyRedis
 }
 
 async function paymentProcessorHttpCallBase(
@@ -77,13 +67,8 @@ const cb = new CircuitBreaker<[CircuitBreakerPayload], void>(
 
 cb.fallback(paymentProcessorHttpCallFallback)
 
-const paymentProcessorHandler = async (
-  payload: PaymentPayload,
-  server: FastifyInstance
-) => {
-  const { redis } = server
-  const cbPayload = { ...payload, requestedAt: new Date().toISOString() }
-  await cb.fire({ payload: cbPayload, redis })
-}
-
-export { PaymentPayload, paymentProcessorHandler }
+export const paymentProcessor =
+  (redis: FastifyRedis) => async (payload: PaymentPayload) => {
+    const cbPayload = { ...payload, requestedAt: new Date().toISOString() }
+    await cb.fire({ payload: cbPayload, redis })
+  }
