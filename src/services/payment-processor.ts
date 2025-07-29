@@ -9,9 +9,9 @@ const PAYMENT_PROCESSOR_DEFAULT_URL =
 const PAYMENT_PROCESSOR_FALLBACK_URL =
   process.env.PAYMENT_PROCESSOR_FALLBACK_URL || "http://localhost:8002"
 
-const cbOptions = {
+const cbOptions: CircuitBreaker.Options = {
   timeout: 1000, // 1 seconds
-  errorThresholdPercentage: 50, // 50% failure rate
+  errorThresholdPercentage: 40, // 40% failure rate
   resetTimeout: 5000 // 5 seconds
 }
 
