@@ -1,45 +1,62 @@
 import { FastifyRedis } from "@fastify/redis"
 import { PaymentSummary, PaymentSummaryQuery } from "../types"
 
+const parseDate = (
+  date: string | undefined,
+  fallback: string
+): number | string => {
+  const parsed = new Date(date ?? "").getTime()
+  return isNaN(parsed) ? fallback : parsed
+}
+
+const parsePayment = (json: string): { amount: number } => {
+  try {
+    return JSON.parse(json)
+  } catch {
+    return { amount: 0 }
+  }
+}
+
+const calculateSummary = (payments: string[]): PaymentSummary => {
+  const { totalAmount, count } = payments.reduce(
+    (acc, p) => {
+      const { amount } = parsePayment(p)
+      return {
+        totalAmount: acc.totalAmount + amount,
+        count: acc.count + 1
+      }
+    },
+    { totalAmount: 0, count: 0 }
+  )
+
+  return {
+    totalRequests: count,
+    totalAmount: Number(totalAmount.toFixed(2))
+  }
+}
+
+const getProcessorSummary =
+  (redis: FastifyRedis, from: number | string, to: number | string) =>
+  async (processor: string): Promise<[string, PaymentSummary]> => {
+    const key = `payments:${processor}:timestamps`
+    const payments = await redis.zrangebyscore(key, from, to)
+    const summary = calculateSummary(payments)
+    return [processor, summary]
+  }
+
 export const getPaymentsSummary =
   (redis: FastifyRedis) =>
   async ({
     from,
     to
   }: PaymentSummaryQuery): Promise<Record<string, PaymentSummary>> => {
-    const fromTimestamp =
-      from && !isNaN(new Date(from).getTime())
-        ? new Date(from).getTime()
-        : "-inf"
-    const toTimestamp =
-      to && !isNaN(new Date(to).getTime()) ? new Date(to).getTime() : "+inf"
+    const fromTs = parseDate(from, "-inf")
+    const toTs = parseDate(to, "+inf")
 
     const processors = ["default", "fallback"]
-    const summary: Record<string, PaymentSummary> = {}
+    const results = await Promise.all(
+      processors.map(getProcessorSummary(redis, fromTs, toTs))
+    )
 
-    for (const processor of processors) {
-      const keySortedSet = `payments:${processor}:timestamps`
-
-      // Recupera os pagamentos no intervalo pelo sorted set
-      const paymentsInRange = await redis.zrangebyscore(
-        keySortedSet,
-        fromTimestamp,
-        toTimestamp
-      )
-
-      let totalRequests = paymentsInRange.length
-      let totalAmount = 0
-
-      for (const paymentString of paymentsInRange) {
-        const payment = JSON.parse(paymentString)
-        totalAmount += payment.amount
-      }
-
-      summary[processor] = {
-        totalRequests,
-        totalAmount: Number(totalAmount.toFixed(2))
-      }
-    }
-
-    return summary
+    return Object.fromEntries(results)
   }
