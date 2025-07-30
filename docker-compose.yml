@@ -1,7 +1,7 @@
 services:
   api01: &api
     build:
-      context: .
+      context: ./apps/api
       dockerfile: Dockerfile
     container_name: api01
     environment:
@@ -16,8 +16,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.60"
-          memory: "150MB"
+          cpus: "0.30"
+          memory: "60MB"
 
   api02:
     <<: *api
@@ -28,6 +28,27 @@ services:
       - PAYMENT_PROCESSOR_FALLBACK_URL=http://payment-processor-fallback:8080
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+
+  worker1:
+    build:
+      context: ./apps/worker
+      dockerfile: Dockerfile
+    container_name: worker1
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PAYMENT_PROCESSOR_DEFAULT_URL=http://payment-processor-default:8080
+      - PAYMENT_PROCESSOR_FALLBACK_URL=http://payment-processor-fallback:8080
+    networks:
+      - rinha-net
+      - payment-processor
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "90MB"
 
   redis:
     image: redis:7-alpine
@@ -41,9 +62,10 @@ services:
         "30mb",
         "--maxmemory-policy",
         "allkeys-lru",
+        "--appendonly",
+        "no",
         "--save",
-        "60",
-        "1",
+        "",
         "--loglevel",
         "warning"
       ]
