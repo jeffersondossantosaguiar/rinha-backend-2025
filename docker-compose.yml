@@ -17,7 +17,7 @@ services:
       resources:
         limits:
           cpus: "0.30"
-          memory: "60MB"
+          memory: "85MB"
 
   api02:
     <<: *api
@@ -47,8 +47,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.50"
-          memory: "90MB"
+          cpus: "0.55"
+          memory: "110MB"
 
   redis:
     image: redis:7-alpine
@@ -61,7 +61,7 @@ services:
         "--maxmemory",
         "30mb",
         "--maxmemory-policy",
-        "allkeys-lru",
+        "noeviction",
         "--appendonly",
         "no",
         "--save",
@@ -74,8 +74,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
-          memory: "35MB"
+          cpus: "0.20"
+          memory: "50MB"
 
   nginx:
     image: nginx:alpine-slim
@@ -93,7 +93,7 @@ services:
       resources:
         limits:
           cpus: "0.15"
-          memory: "15MB"
+          memory: "20MB"
 
 networks:
   payment-processor:

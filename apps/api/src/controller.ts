@@ -7,12 +7,9 @@ export async function paymentProcessorHandler(
   request: FastifyRequest<{ Body: PaymentPayload }>,
   reply: FastifyReply
 ) {
-  const redis = request.server.redis
   const payload: PaymentPayload = request.body
 
-  await paymentQueue.add("process-payment", payload)
-
-  //await paymentProcessor(redis)(payload)
+  paymentQueue.add("process-payment", payload)
 
   return reply.code(202).send()
 }

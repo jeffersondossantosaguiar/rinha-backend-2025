@@ -8,19 +8,24 @@ const PAYMENT_PROCESSOR_FALLBACK_URL =
   process.env.PAYMENT_PROCESSOR_FALLBACK_URL || "http://localhost:8002"
 
 const cbOptions = {
-  timeout: 1000, // 1 seconds
+  timeout: 500, // 500 mili seconds
   errorThresholdPercentage: 40, // 40% failure rate
-  resetTimeout: 5000 // 5 seconds
+  resetTimeout: 1000 // 1 seconds
 }
 
 async function paymentProcessorHttpCallBase(url, cbPayload, processorName) {
   const { redis, payload } = cbPayload
-  await request(`${url}/payments`, {
+
+  const response = await request(`${url}/payments`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
     dispatcher
   })
+
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw new Error(`[${processorName}] HTTP ${response.statusCode}`)
+  }
 
   const keyTotalRequests = `payments:${processorName}:totalRequests`
   const keyTotalAmount = `payments:${processorName}:totalAmount`
