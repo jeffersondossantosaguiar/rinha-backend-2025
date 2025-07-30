@@ -31,7 +31,7 @@ async function paymentProcessorHttpCallBase(url, cbPayload, processorName) {
   const keyTotalAmount = `payments:${processorName}:totalAmount`
   const keySortedSet = `payments:${processorName}:timestamps`
 
-  const timestamp = Date.now()
+  const timestamp = new Date(payload.requestedAt).getTime()
 
   await redis
     .multi()
