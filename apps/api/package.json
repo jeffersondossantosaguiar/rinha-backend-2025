@@ -1,7 +1,7 @@
 {
-  "name": "rinha-backend-2025",
+  "name": "api",
   "version": "1.0.0",
-  "description": "",
+  "description": "API application for Rinha Backend 2025",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
@@ -12,7 +12,7 @@
     "url": "git+https://github.com/jeffersondossantosaguiar/rinha-backend-2025.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Jefferson",
   "license": "ISC",
   "type": "module",
   "bugs": {

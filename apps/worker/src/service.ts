@@ -1,6 +1,7 @@
-const CircuitBreaker = require("opossum")
-const { request } = require("undici")
-const { dispatcher } = require("./http-client.js")
+import IORedis from "ioredis"
+import CircuitBreaker from "opossum"
+import { request } from "undici"
+import { dispatcher } from "./http-client.js"
 
 const PAYMENT_PROCESSOR_DEFAULT_URL =
   process.env.PAYMENT_PROCESSOR_DEFAULT_URL || "http://localhost:8001"
@@ -13,13 +14,24 @@ const cbOptions = {
   resetTimeout: 1000 // 1 seconds
 }
 
-async function paymentProcessorHttpCallBase(url, cbPayload, processorName) {
+type PaymentPayload = {
+  correlationId: string
+  amount: number
+}
+
+async function paymentProcessorHttpCallBase(
+  url: string,
+  cbPayload: { redis: IORedis; payload: PaymentPayload },
+  processorName: "default" | "fallback"
+) {
   const { redis, payload } = cbPayload
+
+  const requestPayload = { ...payload, requestedAt: new Date().toISOString() }
 
   const response = await request(`${url}/payments`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(requestPayload),
     dispatcher
   })
 
@@ -31,7 +43,7 @@ async function paymentProcessorHttpCallBase(url, cbPayload, processorName) {
   const keyTotalAmount = `payments:${processorName}:totalAmount`
   const keySortedSet = `payments:${processorName}:timestamps`
 
-  const timestamp = new Date(payload.requestedAt).getTime()
+  const timestamp = new Date(requestPayload.requestedAt).getTime()
 
   await redis
     .multi()
@@ -41,7 +53,10 @@ async function paymentProcessorHttpCallBase(url, cbPayload, processorName) {
     .exec()
 }
 
-async function paymentProcessorHttpCall(payload) {
+async function paymentProcessorHttpCall(payload: {
+  redis: IORedis
+  payload: PaymentPayload
+}) {
   await paymentProcessorHttpCallBase(
     PAYMENT_PROCESSOR_DEFAULT_URL,
     payload,
@@ -49,7 +64,10 @@ async function paymentProcessorHttpCall(payload) {
   )
 }
 
-async function paymentProcessorHttpCallFallback(payload) {
+async function paymentProcessorHttpCallFallback(payload: {
+  redis: IORedis
+  payload: PaymentPayload
+}) {
   await paymentProcessorHttpCallBase(
     PAYMENT_PROCESSOR_FALLBACK_URL,
     payload,
@@ -57,15 +75,16 @@ async function paymentProcessorHttpCallFallback(payload) {
   )
 }
 
-const cb = new CircuitBreaker(paymentProcessorHttpCall, cbOptions)
+const cb = new CircuitBreaker<[{ redis: IORedis; payload: PaymentPayload }]>(
+  paymentProcessorHttpCall,
+  cbOptions
+)
 
 cb.fallback(paymentProcessorHttpCallFallback)
 
-const paymentProcessor = (redis) => async (payload) => {
-  const cbPayload = { ...payload, requestedAt: new Date().toISOString() }
-  await cb.fire({ payload: cbPayload, redis })
-}
+const paymentProcessor =
+  (redis: IORedis) => async (payload: PaymentPayload) => {
+    await cb.fire({ payload, redis })
+  }
 
-module.exports = {
-  paymentProcessor
-}
+export { paymentProcessor }
