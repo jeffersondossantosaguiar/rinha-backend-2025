@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify"
-import { paymentProcessor } from "./services/payment-processor.js"
+import { paymentQueue } from "./queue/payment.js"
 import { getPaymentsSummary } from "./services/payment-summary.js"
 import { PaymentPayload, PaymentSummaryQuery } from "./types.js"
 
@@ -7,10 +7,9 @@ export async function paymentProcessorHandler(
   request: FastifyRequest<{ Body: PaymentPayload }>,
   reply: FastifyReply
 ) {
-  const redis = request.server.redis
   const payload: PaymentPayload = request.body
 
-  await paymentProcessor(redis)(payload)
+  paymentQueue.add("process-payment", payload)
 
   return reply.code(202).send()
 }

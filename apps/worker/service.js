@@ -1,38 +1,37 @@
-import { FastifyRedis } from "@fastify/redis"
-import CircuitBreaker from "opossum"
-import { request } from "undici"
-import { dispatcher } from "../http-client.js"
-import { CircuitBreakerPayload, PaymentPayload } from "../types.js"
+const CircuitBreaker = require("opossum")
+const { request } = require("undici")
+const { dispatcher } = require("./http-client.js")
 
 const PAYMENT_PROCESSOR_DEFAULT_URL =
   process.env.PAYMENT_PROCESSOR_DEFAULT_URL || "http://localhost:8001"
 const PAYMENT_PROCESSOR_FALLBACK_URL =
   process.env.PAYMENT_PROCESSOR_FALLBACK_URL || "http://localhost:8002"
 
-const cbOptions: CircuitBreaker.Options = {
-  timeout: 1000, // 1 seconds
+const cbOptions = {
+  timeout: 500, // 500 mili seconds
   errorThresholdPercentage: 40, // 40% failure rate
-  resetTimeout: 5000 // 5 seconds
+  resetTimeout: 1000 // 1 seconds
 }
 
-async function paymentProcessorHttpCallBase(
-  url: string,
-  cbPayload: CircuitBreakerPayload,
-  processorName: "default" | "fallback"
-) {
+async function paymentProcessorHttpCallBase(url, cbPayload, processorName) {
   const { redis, payload } = cbPayload
-  await request(`${url}/payments`, {
+
+  const response = await request(`${url}/payments`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
     dispatcher
   })
 
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw new Error(`[${processorName}] HTTP ${response.statusCode}`)
+  }
+
   const keyTotalRequests = `payments:${processorName}:totalRequests`
   const keyTotalAmount = `payments:${processorName}:totalAmount`
   const keySortedSet = `payments:${processorName}:timestamps`
 
-  const timestamp = Date.now()
+  const timestamp = new Date(payload.requestedAt).getTime()
 
   await redis
     .multi()
@@ -42,7 +41,7 @@ async function paymentProcessorHttpCallBase(
     .exec()
 }
 
-async function paymentProcessorHttpCall(payload: CircuitBreakerPayload) {
+async function paymentProcessorHttpCall(payload) {
   await paymentProcessorHttpCallBase(
     PAYMENT_PROCESSOR_DEFAULT_URL,
     payload,
@@ -50,9 +49,7 @@ async function paymentProcessorHttpCall(payload: CircuitBreakerPayload) {
   )
 }
 
-async function paymentProcessorHttpCallFallback(
-  payload: CircuitBreakerPayload
-) {
+async function paymentProcessorHttpCallFallback(payload) {
   await paymentProcessorHttpCallBase(
     PAYMENT_PROCESSOR_FALLBACK_URL,
     payload,
@@ -60,15 +57,15 @@ async function paymentProcessorHttpCallFallback(
   )
 }
 
-const cb = new CircuitBreaker<[CircuitBreakerPayload], void>(
-  paymentProcessorHttpCall,
-  cbOptions
-)
+const cb = new CircuitBreaker(paymentProcessorHttpCall, cbOptions)
 
 cb.fallback(paymentProcessorHttpCallFallback)
 
-export const paymentProcessor =
-  (redis: FastifyRedis) => async (payload: PaymentPayload) => {
-    const cbPayload = { ...payload, requestedAt: new Date().toISOString() }
-    await cb.fire({ payload: cbPayload, redis })
-  }
+const paymentProcessor = (redis) => async (payload) => {
+  const cbPayload = { ...payload, requestedAt: new Date().toISOString() }
+  await cb.fire({ payload: cbPayload, redis })
+}
+
+module.exports = {
+  paymentProcessor
+}
