@@ -9,9 +9,12 @@ export async function paymentProcessorHandler(
 ) {
   const payload: PaymentPayload = request.body
 
-  paymentQueue.add("process-payment", payload)
+  paymentQueue.add("process-payment", payload, {
+    removeOnComplete: true,
+    removeOnFail: true
+  })
 
-  return reply.code(202).send()
+  return reply.status(202).send()
 }
 
 export async function paymentSummaryHandler(
