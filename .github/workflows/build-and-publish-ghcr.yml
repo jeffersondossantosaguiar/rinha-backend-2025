@@ -1,0 +1,35 @@
+name: Build and Publish Docker Images
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  tag:
+    name: Tag Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Semantic Release API
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: apps/api
+          tag_format: api-v${version}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Semantic Release Worker
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: apps/worker
+          tag_format: worker-v${version}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
