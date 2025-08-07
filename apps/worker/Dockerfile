@@ -17,6 +17,7 @@ RUN npm run build
 FROM node:alpine
 
 WORKDIR /app
+ENV NODE_ENV=production
 
 # Copia apenas os arquivos necessários para execução
 COPY --from=builder /app/package.json ./
