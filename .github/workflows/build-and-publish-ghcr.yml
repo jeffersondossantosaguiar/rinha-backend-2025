@@ -69,7 +69,12 @@ jobs:
         id: get_tag
         run: |
           TAG=$(git tag --sort=-creatordate | grep "^${{ matrix.service }}-v" | head -n 1)
-          echo "tag=${TAG#${{ matrix.service }}-v}" >> $GITHUB_OUTPUT
+          if [ -z "$TAG" ]; then
+            TAG="latest"
+          else
+            TAG="${TAG#${{ matrix.service }}-v}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Build and Push ${{ matrix.service }} Image
         uses: docker/build-push-action@v6
