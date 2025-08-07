@@ -14,31 +14,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    strategy:
+      matrix:
+        service:
+          - api
+          - worker
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install dependencies for API
+      - name: Install dependencies for ${{ matrix.service }}
         run: npm install
-        working-directory: apps/api
+        working-directory: apps/${{ matrix.service }}
 
-      - name: 🏷️ Semantic Release API
+      - name: 🏷️ Semantic Release ${{ matrix.service }}
         uses: cycjimmy/semantic-release-action@v4
         with:
-          working_directory: apps/api
-          tag_format: api-v${version}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install dependencies for Worker
-        run: npm install
-        working-directory: apps/worker
-
-      - name: 🏷️ Semantic Release Worker
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          working_directory: apps/worker
-          tag_format: worker-v${version}
+          working_directory: apps/${{ matrix.service }}
+          tag_format: ${{ matrix.service }}-v${version}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
