@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify"
-import { paymentQueue } from "./queue/payment.js"
+import { getPaymentQueue } from "./queue/payment.js"
 import { getPaymentsSummary } from "./services/payment-summary.js"
 import { PaymentPayload, PaymentSummaryQuery } from "./types.js"
 
@@ -9,12 +9,14 @@ export async function paymentProcessorHandler(
 ) {
   const payload: PaymentPayload = request.body
 
-  paymentQueue.add("process-payment", payload, {
+  reply.status(202).send()
+
+  const paymentQueue = getPaymentQueue(request.server.redis)
+
+  await paymentQueue.add("process-payment", payload, {
     removeOnComplete: true,
     removeOnFail: true
   })
-
-  return reply.status(202).send()
 }
 
 export async function paymentSummaryHandler(

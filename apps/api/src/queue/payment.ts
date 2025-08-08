@@ -1,8 +1,14 @@
 import { Queue } from "bullmq"
+import { Redis } from "ioredis"
 
-export const paymentQueue = new Queue("payments", {
-  connection: {
-    host: process.env.REDIS_HOST || "localhost",
-    port: Number(process.env.REDIS_PORT || 6379)
+let paymentQueue: Queue | null = null
+
+export function getPaymentQueue(redis: Redis): Queue {
+  if (!paymentQueue) {
+    paymentQueue = new Queue("payments", {
+      connection: redis
+    })
   }
-})
+
+  return paymentQueue
+}
