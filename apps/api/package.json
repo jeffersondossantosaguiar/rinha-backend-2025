@@ -1,6 +1,6 @@
 {
   "name": "api",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "API application for Rinha Backend 2025",
   "scripts": {
     "dev": "tsx watch src/server.ts",

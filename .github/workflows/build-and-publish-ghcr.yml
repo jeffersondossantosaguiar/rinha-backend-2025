@@ -48,6 +48,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Fetch all tags
+        run: git fetch --tags
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -59,13 +62,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get latest tag for ${{ matrix.service }}
-        id: get_tag
         run: |
           TAG=$(git tag --sort=-v:refname | grep "^${{ matrix.service }}-v" | head -n 1)
           if [ -z "$TAG" ]; then
-            TAG="latest"
+          TAG="latest"
           else
-            TAG="${TAG#${{ matrix.service }}-v}"
+          TAG="${TAG#${{ matrix.service }}-v}"
           fi
           echo "tag=$TAG" >> $GITHUB_ENV
 
