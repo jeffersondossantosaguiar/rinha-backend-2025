@@ -3,7 +3,11 @@ import fastify from "fastify"
 import routes from "./routes.js"
 
 const PORT = Number(process.env.PORT) || 3000
-const app = fastify()
+const app = fastify({
+  logger: false,
+  keepAliveTimeout: 60000, // 60 seconds
+  requestTimeout: 0 // No timeout
+})
 
 app.register(fastifyRedis, {
   host: process.env.REDIS_HOST || "localhost",
